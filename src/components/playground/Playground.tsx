@@ -24,10 +24,12 @@ import {
   useTracks,
   useVoiceAssistant,
 } from "@livekit/components-react";
+import { useKrispNoiseFilter } from '@livekit/components-react/krisp';
 import { ConnectionState, LocalParticipant, Track } from "livekit-client";
 import { QRCodeSVG } from "qrcode.react";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import tailwindTheme from "../../lib/tailwindTheme.preval";
+import { isKrispNoiseFilterSupported } from "@livekit/krisp-noise-filter";
 
 export interface PlaygroundMeta {
   name: string;
@@ -42,6 +44,10 @@ export interface PlaygroundProps {
 
 const headerHeight = 56;
 
+if (!isKrispNoiseFilterSupported()) {
+  console.warn('Krisp noise filter is currently not supported on this browser');
+}
+
 export default function Playground({
   logo,
   themeColors,
@@ -51,6 +57,7 @@ export default function Playground({
   const { name } = useRoomInfo();
   const [transcripts, setTranscripts] = useState<ChatMessageType[]>([]);
   const { localParticipant } = useLocalParticipant();
+  const krisp = useKrispNoiseFilter();
 
   const voiceAssistant = useVoiceAssistant();
 
@@ -193,12 +200,7 @@ export default function Playground({
     }
 
     return visualizerContent;
-  }, [
-    voiceAssistant.audioTrack,
-    config.settings.theme_color,
-    roomState,
-    voiceAssistant.state,
-  ]);
+  }, [voiceAssistant.audioTrack, roomState, voiceAssistant.state]);
 
   const chatTileContent = useMemo(() => {
     if (voiceAssistant.audioTrack) {
@@ -306,6 +308,16 @@ export default function Playground({
             />
           </ConfigurationPanelItem>
         </div>
+        <div>
+          <ConfigurationPanelItem title="Noise Filter">
+            <input
+              type="checkbox"
+              onChange={(ev) => krisp.setNoiseFilterEnabled(ev.target.checked)}
+              checked={krisp.isNoiseFilterEnabled}
+              disabled={krisp.isNoiseFilterPending}
+            />
+          </ConfigurationPanelItem>
+        </div>
         {config.show_qr && (
           <div className="w-full">
             <ConfigurationPanelItem title="QR Code">
@@ -315,19 +327,7 @@ export default function Playground({
         )}
       </div>
     );
-  }, [
-    config.description,
-    config.settings,
-    config.show_qr,
-    localParticipant,
-    name,
-    roomState,
-    localVideoTrack,
-    localMicTrack,
-    themeColors,
-    setUserSettings,
-    voiceAssistant.agent,
-  ]);
+  }, [config.description, config.settings, config.show_qr, localParticipant, name, roomState, voiceAssistant.agent, localVideoTrack, localMicTrack, themeColors, krisp, setUserSettings]);
 
   let mobileTabs: PlaygroundTab[] = [];
   if (config.settings.outputs.video) {
